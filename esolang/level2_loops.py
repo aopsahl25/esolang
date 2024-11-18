@@ -19,6 +19,8 @@ grammar = esolang.level1_statements.grammar + r"""
             | expression "<" expression -> lt
             | expression "%" expression  -> mod
             | expression "==" expression -> eq
+            | expression "and" expression -> and_expr
+            | expression "!=" expression -> neq
             | "(" expression ")" -> parens
 """
 
@@ -60,7 +62,6 @@ class Interpreter(esolang.level1_statements.Interpreter):
     >>> interpreter.visit(parser.parse("a = -7; if a > 3 {a = a * 2} else {a = a + 1}; a"))
     -6
     '''
-
     def range(self, tree):
         # Handle range with one argument, e.g., range(10)
         if len(tree.children) == 1:
@@ -74,59 +75,57 @@ class Interpreter(esolang.level1_statements.Interpreter):
         else:
             raise ValueError("Invalid range expression.")
 
+
     def forloop(self, tree):
         varname = tree.children[0].value  # Get the variable name
         xs = self.visit(tree.children[1])  # Evaluate the range expression
         self.stack.append({})  # Push a new stack frame to track variables
-        
         result = None  # Default result to None
         for x in xs:
             self.stack[-1][varname] = x  # Assign the current value to the variable in the loop
             result = self.visit(tree.children[2])  # Evaluate the block
         self.stack.pop()  # Pop the stack frame after loop execution
-        return result  # Return the last evaluated result in the block
+        return result
+
 
     def whileloop(self, tree):
-    # Get the condition expression (should return a boolean)
-        condition = self.visit(tree.children[0])  # Condition expression
-        result = None  # Default result to None
-    
-    # Continue looping while the condition is true
+        condition = self.visit(tree.children[0])  
+        result = None  
         while condition:
-            result = self.visit(tree.children[1])  # Evaluate the block inside the while loop
-        # Re-evaluate the condition after the block has executed
-            condition = self.visit(tree.children[0])  # Recheck the condition
-    
+            result = self.visit(tree.children[1])  
+            condition = self.visit(tree.children[0])  
         return result
 
 
     def ifstmt(self, tree):
-        condition = bool(self.visit(tree.children[0]))  # Ensure condition is a boolean
-        print(f"Condition evaluated to: {condition}")
+        condition = bool(self.visit(tree.children[0]))  
         if condition:
-            return self.visit(tree.children[1])  # Evaluate the if block
+            return self.visit(tree.children[1])  
         elif len(tree.children) > 2:
-            return self.visit(tree.children[2])  # Evaluate the else block
+            return self.visit(tree.children[2]) 
         return None
 
 
-    def var(self, tree):
-        varname = tree.children[0].value  # Get the variable name
-        if varname not in self.stack[-1]:
-            raise ValueError(f"Variable '{varname}' is not defined.")  # This will raise an error if undefined
+    def _get_from_stack(self, name):
+        for d in reversed(self.stack):
+            if name in d:
+                return d[name]
+        raise ValueError(f"Variable {name} undefined")
     
-        return self.stack[-1][varname]  # Return the variable value
-
+    def var(self, tree):
+        varname = tree.children[0].value  
+        return self._get_from_stack(varname)
+    
     def number(self, tree):
-        return int(tree.children[0].value)  # Return the integer value
+        return int(tree.children[0].value)  
 
     def add(self, tree):
         left, right = tree.children
-        return self.visit(left) + self.visit(right)  # Add the left and right values
+        return self.visit(left) + self.visit(right)  
     
     def sub(self, tree):
         left, right = tree.children
-        return self.visit(left) - self.visit(right)  # Subtract the right from the left
+        return self.visit(left) - self.visit(right) 
     
     def mul(self, tree):
         left, right = tree.children
@@ -134,11 +133,19 @@ class Interpreter(esolang.level1_statements.Interpreter):
     
     def mod(self, tree):
         left, right = tree.children
-        return self.visit(left) % self.visit(right)
+        right_value = self.visit(right)
+        if right_value == 0:
+            right_value = 2
+        return self.visit(left) % right_value
+
     
     def eq(self, tree):
         left, right = tree.children
         return self.visit(left) == self.visit(right)
+
+    def neq(self, tree):
+        left, right = tree.children
+        return self.visit(left) != self.visit(right)
 
     def parens(self, tree):
         return self.visit(tree.children[0]) 
@@ -150,6 +157,13 @@ class Interpreter(esolang.level1_statements.Interpreter):
     def gt(self, tree):
         left, right = tree.children
         return self.visit(left) > self.visit(right)
+    
+    def and_expr(self, tree):
+        left, right = tree.children
+        left_value = self.visit(left)
+        if not left_value:
+            return False 
+        return self.visit(right)  
 
-#interpreter.visit(parser.parse("for i in range(2,31) {if (i > 1) {for j in range(, i) {if (i % j == 0) {continue}}; i}}"))
-# have verified through interpreter.visit(parser.parse("for i in range(2,31) {if (i > 1)...
+#interpreter.visit(parser.parse("for i in range(2,50) {for j in range(2,50) {if j != 0 {if i != j and i % j == 0 {continue}}}; i}"))
+
