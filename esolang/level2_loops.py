@@ -3,11 +3,12 @@ import esolang.level1_statements
 
 
 grammar = esolang.level1_statements.grammar + r"""
-    %extend start: forloop | whileloop | ifstmt
+    %extend start: forloop | whileloop | ifstmt | continue_stmt
 
     forloop: "for" NAME "in" range block
     whileloop: "while" expression block
     ifstmt: "if" expression block ("else" block)?
+    continue_stmt: "continue" -> continue_stmt
 
     range: "range" "(" expression ("," expression)? ")"
     expression: NUMBER   -> number
@@ -25,6 +26,9 @@ grammar = esolang.level1_statements.grammar + r"""
 """
 
 parser = lark.Lark(grammar)
+
+class ContinueException(Exception):
+    pass
 
 class Interpreter(esolang.level1_statements.Interpreter):
     '''
@@ -45,14 +49,14 @@ class Interpreter(esolang.level1_statements.Interpreter):
     Traceback (most recent call last):
         ...
     ValueError: Variable i undefined
-    #while statements 
+
     >>> interpreter.visit(parser.parse("a=0; while a < 5 {a = a + 1}"))
     5
     >>> interpreter.visit(parser.parse("b=0; while b < 3 {b = b + 1}; b"))
     3
     >>> interpreter.visit(parser.parse("x=10; while x > 0 {x = x - 1}"))
     0
-    #if statements
+
     >>> interpreter.visit(parser.parse("if 2 > 1 {5}"))
     5
     >>> interpreter.visit(parser.parse("if (2-7) > 1 {5} else {10}"))
@@ -77,25 +81,29 @@ class Interpreter(esolang.level1_statements.Interpreter):
 
 
     def forloop(self, tree):
-        varname = tree.children[0].value  # Get the variable name
+        varname = tree.children[0].value
         xs = self.visit(tree.children[1])  # Evaluate the range expression
         self.stack.append({})  # Push a new stack frame to track variables
         result = None  # Default result to None
         for x in xs:
             self.stack[-1][varname] = x  # Assign the current value to the variable in the loop
-            result = self.visit(tree.children[2])  # Evaluate the block
+            try:
+                result = self.visit(tree.children[2])  # Evaluate the block
+            except ContinueException:
+                continue  # Skip to the next iteration of the loop
         self.stack.pop()  # Pop the stack frame after loop execution
         return result
 
-
     def whileloop(self, tree):
-        condition = self.visit(tree.children[0])  
-        result = None  
+        condition = self.visit(tree.children[0])
+        result = None
         while condition:
-            result = self.visit(tree.children[1])  
-            condition = self.visit(tree.children[0])  
+            try:
+                result = self.visit(tree.children[1])  # Evaluate the block
+            except ContinueException:
+                continue  # Skip to the next iteration of the loop
+            condition = self.visit(tree.children[0])
         return result
-
 
     def ifstmt(self, tree):
         condition = bool(self.visit(tree.children[0]))  
@@ -163,7 +171,9 @@ class Interpreter(esolang.level1_statements.Interpreter):
         left_value = self.visit(left)
         if not left_value:
             return False 
-        return self.visit(right)  
+        return self.visit(right) 
+    def continue_stmt(self, tree):
+        raise ContinueException() 
 
 #interpreter.visit(parser.parse("for i in range(2,50) {for j in range(2,50) {if j != 0 {if i != j and i % j == 0 {continue}}}; i}"))
 
