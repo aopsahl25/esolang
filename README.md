@@ -44,3 +44,4 @@ If Statements
     >>> interpreter.visit(parser.parse("a = -7; if a > 3 {a = a * 2} else {a = a + 1}; a"))
     -6
 ```
+Computing Prime Numbers
