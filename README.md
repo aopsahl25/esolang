@@ -54,7 +54,7 @@ Grammar for identifying prime numbers:
     is_prime_call: "is_prime" "(" expression ")"
 ```
 
-Function for identifying prime numbers: 
+Function for identifying prime numbers (housed in interpreter class): 
 
 ```
     def is_prime_call(self, tree):
