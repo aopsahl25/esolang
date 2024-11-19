@@ -3,12 +3,13 @@ import esolang.level1_statements
 
 
 grammar = esolang.level1_statements.grammar + r"""
-    %extend start: forloop | whileloop | ifstmt | continue_stmt
+    %extend start: forloop | whileloop | ifstmt | continue_stmt | is_prime_call
 
     forloop: "for" NAME "in" range block
     whileloop: "while" expression block
     ifstmt: "if" expression block ("else" block)?
     continue_stmt: "continue" -> continue_stmt
+    is_prime_call: "is_prime" "(" expression ")"
 
     range: "range" "(" expression ("," expression)? ")"
     expression: NUMBER   -> number
@@ -65,43 +66,46 @@ class Interpreter(esolang.level1_statements.Interpreter):
     10
     >>> interpreter.visit(parser.parse("a = -7; if a > 3 {a = a * 2} else {a = a + 1}; a"))
     -6
+    >>> interpreter.visit(parser.parse("a=15; is_prime(a)"))
+    False
+    >>> interpreter.visit(parser.parse("a=29; is_prime(a)"))
+    True
     '''
+    
     def range(self, tree):
-        # Handle range with one argument, e.g., range(10)
         if len(tree.children) == 1:
-            stop_value = self.visit(tree.children[0])  # Evaluate the single argument
-            return list(range(stop_value))  # From 0 to stop_value-1
-        # Handle range with two arguments, e.g., range(5, 10)
+            stop_value = self.visit(tree.children[0])  
+            return list(range(stop_value)) 
         elif len(tree.children) == 2:
-            start_value = self.visit(tree.children[0])  # Start of the range
-            stop_value = self.visit(tree.children[1])  # End of the range
-            return list(range(start_value, stop_value))  # From start to stop_value-1
+            start_value = self.visit(tree.children[0])  
+            stop_value = self.visit(tree.children[1])  
+            return list(range(start_value, stop_value))  
         else:
             raise ValueError("Invalid range expression.")
 
-
     def forloop(self, tree):
         varname = tree.children[0].value
-        xs = self.visit(tree.children[1])  # Evaluate the range expression
-        self.stack.append({})  # Push a new stack frame to track variables
-        result = None  # Default result to None
+        xs = self.visit(tree.children[1])  
+        self.stack.append({}) 
+        result = None  
         for x in xs:
-            self.stack[-1][varname] = x  # Assign the current value to the variable in the loop
+            self.stack[-1][varname] = x 
             try:
-                result = self.visit(tree.children[2])  # Evaluate the block
+                result = self.visit(tree.children[2])  
             except ContinueException:
-                continue  # Skip to the next iteration of the loop
-        self.stack.pop()  # Pop the stack frame after loop execution
-        return result
+                continue  
+        self.stack.pop()  
+        return result  
+
 
     def whileloop(self, tree):
         condition = self.visit(tree.children[0])
         result = None
         while condition:
             try:
-                result = self.visit(tree.children[1])  # Evaluate the block
+                result = self.visit(tree.children[1])  
             except ContinueException:
-                continue  # Skip to the next iteration of the loop
+                continue  
             condition = self.visit(tree.children[0])
         return result
 
@@ -110,7 +114,7 @@ class Interpreter(esolang.level1_statements.Interpreter):
         if condition:
             return self.visit(tree.children[1])  
         elif len(tree.children) > 2:
-            return self.visit(tree.children[2]) 
+            return self.visit(tree.children[2])  
         return None
 
 
@@ -146,7 +150,6 @@ class Interpreter(esolang.level1_statements.Interpreter):
             right_value = 2
         return self.visit(left) % right_value
 
-    
     def eq(self, tree):
         left, right = tree.children
         return self.visit(left) == self.visit(right)
@@ -172,8 +175,21 @@ class Interpreter(esolang.level1_statements.Interpreter):
         if not left_value:
             return False 
         return self.visit(right) 
-    def continue_stmt(self, tree):
-        raise ContinueException() 
 
-#interpreter.visit(parser.parse("for i in range(2,50) {for j in range(2,50) {if j != 0 {if i != j and i % j == 0 {continue}}}; i}"))
+    def continue_stmt(self, tree):
+        raise ContinueException()  
+    
+    def is_prime_call(self, tree):
+        num = self.visit(tree.children[0])  
+        if num <= 1:
+            return False
+        for i in range(2, num):
+            if num % i == 0:
+                return False
+        return True
+
+
+
+interpreter = Interpreter()
+
 
