@@ -45,3 +45,34 @@ If Statements
     -6
 ```
 Computing Prime Numbers
+
+Grammar for identifying prime numbers: 
+
+```
+    %extend start: forloop | whileloop | ifstmt | continue_stmt | is_prime_call
+
+    is_prime_call: "is_prime" "(" expression ")"
+```
+
+Function for identifying prime numbers: 
+
+```
+    def is_prime_call(self, tree):
+        num = self.visit(tree.children[0])  
+        if num <= 1:
+            return False
+        for i in range(2, num):
+            if num % i == 0:
+                return False
+        return True
+```
+
+Test cases identifying if a number is prime:
+
+```
+>>> interpreter.visit(parser.parse("a=15; is_prime(a)"))
+False
+>>> interpreter.visit(parser.parse("a=29; is_prime(a)"))
+True
+```
+
