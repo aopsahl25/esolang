@@ -2,9 +2,9 @@
 
 A simple esolang for experimenting with different syntax and semantics of programming languages.
 
-# Examples demonstrating functionality:
+Examples demonstrating functionality:
 
-# For Loops
+For Loops
 
 ```
     >>> interpreter.visit(parser.parse("for i in range(10) {i}"))
@@ -21,7 +21,7 @@ A simple esolang for experimenting with different syntax and semantics of progra
     45
 ```
 
-# While Loops
+While Loops
 
 ```
     >>> interpreter.visit(parser.parse("a=0; while a < 5 {a = a + 1}"))
@@ -32,7 +32,7 @@ A simple esolang for experimenting with different syntax and semantics of progra
     0
 ```
 
-# If Statements
+If Statements
 
 ```
     >>> interpreter.visit(parser.parse("if 2 > 1 {5}"))
